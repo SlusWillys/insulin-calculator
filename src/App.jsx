@@ -140,10 +140,10 @@ function FoodEntry({ onAdd }) {
       if (parsed.carbs !== undefined) setCarbs(String(parsed.carbs));
       if (parsed.protein !== undefined) setProtein(String(parsed.protein));
       if (parsed.fat !== undefined) setFat(String(parsed.fat));
-      setStatus("✅ Распознано");
+      setStatus("✓ Распознано");
       setTimeout(() => setStatus(""), 2500);
     } catch(err) {
-      setStatus("❌ " + err.message);
+      setStatus("✗ " + err.message);
     }
     setLoading(false);
     e.target.value = "";
@@ -153,7 +153,8 @@ function FoodEntry({ onAdd }) {
   const p = parseFloat(protein) || 0;
   const f = parseFloat(fat) || 0;
   const g = parseFloat(grams) || 0;
-  const xe = (carbs && grams) ? Math.round(c * g / 100 / XE_GRAMS * 10) / 10 : null;
+  const totalCarbsExactPreview = c * g / 100;
+  const xe = (carbs && grams) ? Math.round(totalCarbsExactPreview / XE_GRAMS * 10) / 10 : null;
   const bjuKcal = (p * 4 + f * 9) * g / 100;
   const bje = Math.round(bjuKcal / 100 * 100) / 100;
   const isFatty = f > 0 && (f * g / 100) >= 10;
@@ -161,9 +162,10 @@ function FoodEntry({ onAdd }) {
   const handleAdd = () => {
     if (!name) { alert("Введите название продукта"); return; }
     if (!grams || g <= 0) { alert("Введите количество (граммы порции)"); return; }
-    if (!carbs && !protein && !fat) { alert("Введите хотя бы углеводы, белки или жиры на 100г"); return; }
-    const totalCarbs = Math.round(c * g / 100 * 10) / 10;
-    const totalXE = Math.round(totalCarbs / XE_GRAMS * 10) / 10;
+    if (!carbs && !protein && !fat) { alert("Введите хоть бы углеводы, белки или жиры на 100г"); return; }
+    const totalCarbsExact = c * g / 100;
+    const totalCarbs = Math.round(totalCarbsExact * 10) / 10;
+    const totalXE = Math.round(totalCarbsExact / XE_GRAMS * 10) / 10;
     const totalProtein = Math.round(p * g / 100 * 10) / 10;
     const totalFat = Math.round(f * g / 100 * 10) / 10;
     const totalBJE = Math.round((totalProtein * 4 + totalFat * 9) / 100 * 100) / 100;
@@ -179,7 +181,7 @@ function FoodEntry({ onAdd }) {
         <PhotoButton label="📷 Этикетка" loading={loading} onChange={handlePhoto} />
       </div>
       {status && (
-        <div style={{ fontSize: 11, color: status.startsWith("✅") ? COLORS.success : COLORS.danger, marginBottom: 8, wordBreak: "break-word" }}>
+        <div style={{ fontSize: 11, color: status.startsWith("✓") ? COLORS.success : COLORS.danger, marginBottom: 8, wordBreak: "break-word" }}>
           {status}
         </div>
       )}
@@ -209,12 +211,12 @@ function FoodEntry({ onAdd }) {
       </div>
       {xe !== null && (
         <div style={{ fontSize: 13, color: COLORS.accent, fontWeight: 600, marginBottom: 6 }}>
-          = {Math.round(c * g / 100 * 10) / 10}г углеводов · {xe} ХЕ
+          = {Math.round(totalCarbsExactPreview * 10) / 10}г углеводов · {xe} ХЕ
         </div>
       )}
       {isFatty && (
         <div style={{ fontSize: 12, color: COLORS.purple, fontWeight: 600, marginBottom: 8, background: COLORS.purpleLight, borderRadius: 8, padding: "6px 10px" }}>
-          Жирный/белковый продукт — БЖП: {bje} БЖЕ (оценочно)
+          Жирный/белковый продукт → БЖЕ: {bje} БЖЕ (ориентировочно)
         </div>
       )}
       <button onClick={handleAdd} style={{ width: "100%", padding: 10, borderRadius: 10, border: "none", background: COLORS.accent, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
@@ -294,18 +296,31 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", background: COLORS.bg, fontFamily: "system-ui, -apple-system, sans-serif", padding: "20px 14px 40px", maxWidth: 420, margin: "0 auto", color: COLORS.text }}>
 
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 2, color: COLORS.muted, textTransform: "uppercase", marginBottom: 4 }}>Фиасп · Тресиба</div>
-        <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Калькулятор дозы</h1>
-        <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 2 }}>{now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</div>
+      <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 2, color: COLORS.muted, textTransform: "uppercase", marginBottom: 4 }}>Фиаспр · Требиба</div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>Калькулятор дозы</h1>
+          <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 2 }}>{now.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</div>
+        </div>
+        <button onClick={() => {
+          setGlucoseStr("7.0");
+          setFoods([]);
+          setLastDose(0);
+          setLastTime("");
+        }} style={{
+          padding: "6px 12px", borderRadius: 10, border: "1px solid " + COLORS.border,
+          background: COLORS.card, color: COLORS.muted, fontSize: 11, fontWeight: 600, cursor: "pointer",
+        }}>
+          ↻ Сбросить всё
+        </button>
       </div>
 
       <Card style={{ background: (hour >= 20 && hour < 21) ? COLORS.purpleLight : "#fafafe", border: "1px solid " + ((hour >= 20 && hour < 21) ? COLORS.purple : COLORS.border) }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 20 }}>💉</span>
+            <span style={{ fontSize: 20 }}>🩸</span>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.purple }}>{(hour >= 20 && hour < 21) ? "Время Тресибы!" : "Тресиба (базал)"}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.purple }}>{(hour >= 20 && hour < 21) ? "Время Требибы!" : "Требиба (базал)"}</div>
               <div style={{ fontSize: 11, color: COLORS.muted }}>Ежедневно ~20:00</div>
             </div>
           </div>
@@ -314,7 +329,7 @@ export default function App() {
       </Card>
 
       <Card style={{ background: COLORS.accentLight, border: "1px solid " + COLORS.accent + "33" }}>
-        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: COLORS.accent }}>УК по времени (ед. на 1 ХЕ)</div>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: COLORS.accent }}>УР по времени (ед. на 1 ХЕ)</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
           {ICR_SCHEDULE.map(s => (
             <div key={s.label} style={{ background: s === activeICR ? COLORS.accent : COLORS.card, borderRadius: 10, padding: "8px 10px", border: "1px solid " + (s === activeICR ? COLORS.accent : COLORS.border) }}>
@@ -338,9 +353,9 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: glucoseColor }} />
-            <span style={{ fontSize: 14, fontWeight: 700 }}>Текущий сахар</span>
+            <span style={{ fontSize: 14, fontWeight: 700 }}>Текущий уровень</span>
           </div>
-          <PhotoButton label="🖼 Фото Dexcom" loading={dexLoading} onChange={handleDexPhoto} />
+          <PhotoButton label="📸 Фото Dexcom" loading={dexLoading} onChange={handleDexPhoto} />
         </div>
         {dexStatus ? (
           <div style={{ background: dexStatus.startsWith("Готово") ? COLORS.successLight : COLORS.warningLight, borderRadius: 10, padding: "8px 12px", fontSize: 12, color: dexStatus.startsWith("Готово") ? COLORS.success : COLORS.warning, marginBottom: 10, wordBreak: "break-all" }}>
@@ -358,7 +373,7 @@ export default function App() {
           onChange={e => setGlucoseStr(e.target.value)}
           style={{ width: "100%", accentColor: glucoseColor, cursor: "pointer", marginBottom: 10 }} />
         <div style={{ background: glucose > 10 ? COLORS.warningLight : glucose < 4 ? COLORS.dangerLight : COLORS.successLight, borderRadius: 10, padding: "8px 12px", fontSize: 12, color: glucoseColor, fontWeight: 500 }}>
-          {glucose > 13 ? "Выраженная гипергликемия" : glucose > 10 ? "Повышен — нужна коррекция" : glucose > 7.8 ? "Немного выше нормы" : glucose >= 4 ? "В целевом диапазоне" : "Гипогликемия — сначала купируйте!"}
+          {glucose > 13 ? "Отягченная гипергликемия" : glucose > 10 ? "Повышен — нужна коррекция" : glucose > 7.8 ? "Немного выше норм" : glucose >= 4 ? "В целевом диапазоне" : "Гипогликемия — сначала куприте!"}
         </div>
       </Card>
 
@@ -373,42 +388,46 @@ export default function App() {
             <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 10, background: COLORS.accentLight, marginBottom: 6 }}>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{f.name}</div>
-                <div style={{ fontSize: 11, color: COLORS.muted }}>{f.grams}г · {f.totalCarbs}г УВ{f.totalBJE > 0 ? " · " + f.totalBJE + " БЖЕ" : ""}</div>
+                <div style={{ fontSize: 11, color: COLORS.muted }}>{f.grams}г · {f.totalCarbs}г УЭ{f.totalBJE > 0 ? " · " + f.totalBJE + " БЖЕ" : ""}</div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 15, fontWeight: 800, color: COLORS.accent }}>{f.totalXE} ХЕ</span>
-                <button onClick={() => setFoods(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: COLORS.danger, cursor: "pointer", fontSize: 18, lineHeight: 1, padding: 0 }}>✕</button>
+                <button onClick={() => setFoods(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: COLORS.danger, cursor: "pointer", fontSize: 18, lineHeight: 1, padding: 0 }}>×</button>
               </div>
             </div>
           ))}
           {foods.length > 0 && (
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", borderRadius: 10, background: COLORS.accent, color: "#fff", fontWeight: 700, marginTop: 4 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", borderRadius: 10, background: COLORS.accent, color: "#fff", fontWeight: 700, marginTop: 4, marginBottom: 8 }}>
               <span>Итого</span>
               <span>{totalCarbs}г · {totalXE} ХЕ</span>
             </div>
+          )}
+          {foods.length > 0 && (
+            <button onClick={() => setFoods([])} style={{
+              width: "100%", padding: "8px", borderRadius: 10, border: "1px solid " + COLORS.danger,
+              background: "transparent", color: COLORS.danger, fontSize: 12, fontWeight: 600, cursor: "pointer",
+            }}>
+              × Сбросить все продукты
+            </button>
           )}
         </Card>
       )}
 
       <Card>
         <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>Активный инсулин (IOB)</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-          <div>
-            <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 6 }}>Последний болюс</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <button onClick={() => setLastDose(d => Math.max(0, Math.round((d - 0.5) * 10) / 10))} style={{ width: 30, height: 36, borderRadius: 8, border: "1px solid " + COLORS.border, background: COLORS.bg, fontSize: 18, cursor: "pointer", fontWeight: 700 }}>-</button>
-              <input type="number" step="0.5" min="0" value={lastDose}
-                onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0) setLastDose(Math.round(v * 2) / 2); }}
-                style={{ flex: 1, padding: "6px 4px", borderRadius: 10, border: "2px solid " + COLORS.accent, fontSize: 18, fontWeight: 800, color: COLORS.accent, background: COLORS.bg, textAlign: "center", outline: "none", minWidth: 0 }} />
-              <button onClick={() => setLastDose(d => Math.round((d + 0.5) * 10) / 10)} style={{ width: 30, height: 36, borderRadius: 8, border: "1px solid " + COLORS.border, background: COLORS.bg, fontSize: 18, cursor: "pointer", fontWeight: 700 }}>+</button>
-              <span style={{ fontSize: 11, color: COLORS.muted }}>ед.</span>
-            </div>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 6 }}>Последний болюс</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+            <button onClick={() => setLastDose(d => Math.max(0, Math.round((d - 0.5) * 10) / 10))} style={{ width: 36, height: 40, borderRadius: 8, border: "1px solid " + COLORS.border, background: COLORS.bg, fontSize: 18, cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>-</button>
+            <input type="number" step="0.5" min="0" value={lastDose}
+              onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v >= 0) setLastDose(Math.round(v * 2) / 2); }}
+              style={{ flex: 1, padding: "8px 4px", borderRadius: 10, border: "2px solid " + COLORS.accent, fontSize: 18, fontWeight: 800, color: COLORS.accent, background: COLORS.bg, textAlign: "center", outline: "none", minWidth: 0 }} />
+            <button onClick={() => setLastDose(d => Math.round((d + 0.5) * 10) / 10)} style={{ width: 36, height: 40, borderRadius: 8, border: "1px solid " + COLORS.border, background: COLORS.bg, fontSize: 18, cursor: "pointer", fontWeight: 700, flexShrink: 0 }}>+</button>
+            <span style={{ fontSize: 12, color: COLORS.muted, flexShrink: 0 }}>ед.</span>
           </div>
-          <div>
-            <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 6 }}>Время введения</div>
-            <input type="time" value={lastTime} onChange={e => setLastTime(e.target.value)}
-              style={{ fontSize: 15, fontWeight: 700, border: "1px solid " + COLORS.border, borderRadius: 10, padding: "6px 8px", width: "100%", background: COLORS.bg, color: COLORS.text, boxSizing: "border-box" }} />
-          </div>
+          <div style={{ fontSize: 12, color: COLORS.muted, marginBottom: 6 }}>Время введения</div>
+          <input type="time" value={lastTime} onChange={e => setLastTime(e.target.value)}
+            style={{ fontSize: 16, fontWeight: 700, border: "2px solid " + COLORS.accent, borderRadius: 10, padding: "10px 12px", width: "100%", background: COLORS.bg, color: COLORS.text, boxSizing: "border-box" }} />
         </div>
         <div style={{ background: iob > 0 ? COLORS.warningLight : COLORS.successLight, borderRadius: 12, padding: "10px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
@@ -420,13 +439,21 @@ export default function App() {
         {iob > 0 && <div style={{ fontSize: 12, color: COLORS.warning, marginTop: 8, fontWeight: 500 }}>IOB будет вычтен из коррекции</div>}
         {iob > 0 && tab !== "correction" && totalXE > 0 && (
           <div style={{ fontSize: 12, color: COLORS.danger, marginTop: 6, fontWeight: 500 }}>
-            ⚠️ Фиасп был менее {FIASP_DIA}ч назад — риск наложения доз, вводите новую дозу осторожно
+            ⚠️ Фиаспр был менее {FIASP_DIA}ч назад — риск наложения доз, вводите новую дозу осторожно
           </div>
+        )}
+        {(lastDose > 0 || lastTime) && (
+          <button onClick={() => { setLastDose(0); setLastTime(""); }} style={{
+            width: "100%", marginTop: 10, padding: "8px", borderRadius: 10, border: "1px solid " + COLORS.danger,
+            background: "transparent", color: COLORS.danger, fontSize: 12, fontWeight: 600, cursor: "pointer",
+          }}>
+            × Сбросить IOB
+          </button>
         )}
       </Card>
 
       <Card style={{ border: "2px solid " + COLORS.accent }}>
-        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>Расчётная доза Фиаспа</div>
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>Расчётная доза Фиаспра</div>
 
         {tab !== "correction" && (totalXE > 0 ? (
           <div style={{ background: COLORS.accentLight, borderRadius: 14, padding: "12px 16px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -444,29 +471,29 @@ export default function App() {
           <div style={{ background: COLORS.purpleLight, borderRadius: 14, padding: "12px 16px", marginBottom: 10 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <div>
-                <div style={{ fontSize: 13, color: COLORS.muted }}>БЖП (жир/белок)</div>
-                <div style={{ fontSize: 11, color: COLORS.muted }}>{totalBJE} БЖЕ x {BJU_COEF} ед. · оценочно</div>
+                <div style={{ fontSize: 13, color: COLORS.muted }}>БЖЕ (жир/белок)</div>
+                <div style={{ fontSize: 11, color: COLORS.muted }}>{totalBJE} БЖЕ x {BJU_COEF} ед. · ориентировочно</div>
               </div>
               <span style={{ fontSize: 26, fontWeight: 800, color: COLORS.purple }}>{bjuDose} <span style={{ fontSize: 13 }}>ед.</span></span>
             </div>
             {glucose < TARGET && (
               <div style={{ fontSize: 12, color: COLORS.warning, fontWeight: 500, marginBottom: 4 }}>
-                ⚠️ Сахар в норме/ниже цели — БЖП-дозу лучше отложить и контролировать Dexcom
+                ⚠️ Сахара в норме/ниже цели — БЖЕ-дозу лучше отложить и контролировать Dexcom
               </div>
             )}
             {iob > 0 && (
               <div style={{ fontSize: 12, color: COLORS.warning, fontWeight: 500, marginBottom: 4 }}>
-                ⚠️ Есть активный инсулин (IOB {iobDisplay} ед.) — риск наложения, вводите БЖП осторожно
+                ⚠️ Есть активный инсулин (IOB {iobDisplay} ед.) — риск наложения, вводите БЖЕ осторожно
               </div>
             )}
             {(hour >= 22 || hour < 6) && (
               <div style={{ fontSize: 12, color: COLORS.danger, fontWeight: 500 }}>
-                🌙 Ночное время — повышен риск поздней гипогликемии от БЖП-дозы
+                🌙 Ночное время — повышен риск поздней гипогликемии от БЖЕ-дозы
               </div>
             )}
             {glucose >= TARGET && iob === 0 && hour >= 6 && hour < 22 && (
               <div style={{ fontSize: 12, color: COLORS.success, fontWeight: 500 }}>
-                ✅ Сахар повышен, IOB нет — БЖП-дозу можно учитывать
+                ✓ Сахара повышен, IOB нет — БЖЕ-дозу можно учитывать
               </div>
             )}
           </div>
@@ -492,15 +519,15 @@ export default function App() {
             )}
           </>
         ) : (
-          <div style={{ background: COLORS.successLight, borderRadius: 14, padding: "12px 16px", fontSize: 13, color: COLORS.success, fontWeight: 500, marginBottom: 10 }}>Коррекция не нужна — сахар в цели</div>
+          <div style={{ background: COLORS.successLight, borderRadius: 14, padding: "12px 16px", fontSize: 13, color: COLORS.success, fontWeight: 500, marginBottom: 10 }}>Коррекция не нужна — сахара в цели</div>
         ))}
 
         <div style={{ borderTop: "2px dashed " + COLORS.border, paddingTop: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <span style={{ fontSize: 15, fontWeight: 700 }}>Итого ввести</span>
+            <span style={{ fontSize: 15, fontWeight: 700 }}>Итого введите</span>
             {(mealDose > 0 || bjuDose > 0 || corrRounded > 0) && (
               <div style={{ fontSize: 11, color: COLORS.muted, marginTop: 2 }}>
-                {mealDose > 0 ? "еда " + mealDose : ""}{bjuDose > 0 ? " + БЖП " + bjuDose : ""}{corrRounded > 0 ? " + коррекция " + corrRounded : ""}
+                {mealDose > 0 ? "еда " + mealDose : ""}{bjuDose > 0 ? " + БЖЕ " + bjuDose : ""}{corrRounded > 0 ? " + коррекция " + corrRounded : ""}
               </div>
             )}
           </div>
@@ -509,7 +536,7 @@ export default function App() {
       </Card>
 
       <div style={{ background: COLORS.dangerLight, borderRadius: 12, padding: "12px 14px", fontSize: 12, color: COLORS.danger, lineHeight: 1.5 }}>
-        Калькулятор носит информационный характер. Дозы согласовывайте с эндокринологом. При ГК ниже 4 ммоль/л инсулин не вводить.
+        Калькулятор носит информационный характер. Дозу согласовывайте с эндокринологом. При ГК ниже 4 ммоль/л инсулин не вводитьте.
       </div>
     </div>
   );
